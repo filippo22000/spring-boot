@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,9 @@ package org.springframework.boot.actuate.autoconfigure;
 
 import javax.management.MBeanServer;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.autoconfigure.EndpointMBeanExportAutoConfiguration.JmxEnabledCondition;
 import org.springframework.boot.actuate.endpoint.Endpoint;
 import org.springframework.boot.actuate.endpoint.jmx.EndpointMBeanExporter;
@@ -37,8 +39,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.util.StringUtils;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 /**
  * {@link EnableAutoConfiguration Auto-configuration} to enable JMX export for
  * {@link Endpoint}s.
@@ -52,15 +52,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @EnableConfigurationProperties(EndpointMBeanExportProperties.class)
 public class EndpointMBeanExportAutoConfiguration {
 
-	@Autowired
-	private EndpointMBeanExportProperties properties = new EndpointMBeanExportProperties();
+	private final EndpointMBeanExportProperties properties;
 
-	@Autowired(required = false)
-	private ObjectMapper objectMapper;
+	private final ObjectMapper objectMapper;
+
+	public EndpointMBeanExportAutoConfiguration(EndpointMBeanExportProperties properties,
+			ObjectProvider<ObjectMapper> objectMapperProvider) {
+		this.properties = properties;
+		this.objectMapper = objectMapperProvider.getIfAvailable();
+	}
 
 	@Bean
 	public EndpointMBeanExporter endpointMBeanExporter(MBeanServer server) {
-		EndpointMBeanExporter mbeanExporter = new EndpointMBeanExporter(this.objectMapper);
+		EndpointMBeanExporter mbeanExporter = new EndpointMBeanExporter(
+				this.objectMapper);
 		String domain = this.properties.getDomain();
 		if (StringUtils.hasText(domain)) {
 			mbeanExporter.setDomain(domain);

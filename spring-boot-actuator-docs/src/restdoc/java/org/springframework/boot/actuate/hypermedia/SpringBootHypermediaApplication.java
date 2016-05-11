@@ -16,14 +16,19 @@
 
 package org.springframework.boot.actuate.hypermedia;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
-
 import groovy.text.GStringTemplateEngine;
 import groovy.text.TemplateEngine;
 
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
+import org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+
+// Flyway must go first
 @SpringBootApplication
+@Import({ FlywayAutoConfiguration.class, LiquibaseAutoConfiguration.class })
 public class SpringBootHypermediaApplication {
 
 	@Bean

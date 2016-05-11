@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,10 +26,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnNotWebApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.autoconfigure.condition.SpringBootCondition;
+import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2RestOperationsConfiguration.OAuth2ClientIdCondition;
 import org.springframework.boot.bind.RelaxedPropertyResolver;
-import org.springframework.boot.context.embedded.FilterRegistrationBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ConditionContext;
 import org.springframework.context.annotation.Conditional;
@@ -72,21 +73,9 @@ public class OAuth2RestOperationsConfiguration {
 	@Primary
 	public OAuth2RestTemplate oauth2RestTemplate(OAuth2ClientContext oauth2ClientContext,
 			OAuth2ProtectedResourceDetails details) {
-		OAuth2RestTemplate template = new OAuth2RestTemplate(details, oauth2ClientContext);
+		OAuth2RestTemplate template = new OAuth2RestTemplate(details,
+				oauth2ClientContext);
 		return template;
-	}
-
-	@Configuration
-	protected abstract static class BaseConfiguration {
-
-		@Bean
-		@ConfigurationProperties("security.oauth2.client")
-		@Primary
-		public AuthorizationCodeResourceDetails oauth2RemoteResource() {
-			AuthorizationCodeResourceDetails details = new AuthorizationCodeResourceDetails();
-			return details;
-		}
-
 	}
 
 	@Configuration
@@ -111,25 +100,38 @@ public class OAuth2RestOperationsConfiguration {
 	@Configuration
 	@ConditionalOnBean(OAuth2ClientConfiguration.class)
 	@ConditionalOnWebApplication
-	protected static class SessionScopedConfiguration extends BaseConfiguration {
-
-		@Resource
-		@Qualifier("accessTokenRequest")
-		protected AccessTokenRequest accessTokenRequest;
+	protected static class SessionScopedConfiguration {
 
 		@Bean
-		@Scope(value = "session", proxyMode = ScopedProxyMode.INTERFACES)
-		public DefaultOAuth2ClientContext oauth2ClientContext() {
-			return new DefaultOAuth2ClientContext(this.accessTokenRequest);
+		@ConfigurationProperties("security.oauth2.client")
+		@Primary
+		public AuthorizationCodeResourceDetails oauth2RemoteResource() {
+			AuthorizationCodeResourceDetails details = new AuthorizationCodeResourceDetails();
+			return details;
 		}
 
 		@Bean
 		public FilterRegistrationBean oauth2ClientFilterRegistration(
-				OAuth2ClientContextFilter filter) {
+				OAuth2ClientContextFilter filter, SecurityProperties security) {
 			FilterRegistrationBean registration = new FilterRegistrationBean();
 			registration.setFilter(filter);
-			registration.setOrder(-100);
+			registration.setOrder(security.getFilterOrder() - 10);
 			return registration;
+		}
+
+		@Configuration
+		protected static class ClientContextConfiguration {
+
+			@Resource
+			@Qualifier("accessTokenRequest")
+			protected AccessTokenRequest accessTokenRequest;
+
+			@Bean
+			@Scope(value = "session", proxyMode = ScopedProxyMode.INTERFACES)
+			public DefaultOAuth2ClientContext oauth2ClientContext() {
+				return new DefaultOAuth2ClientContext(this.accessTokenRequest);
+			}
+
 		}
 
 	}
@@ -143,7 +145,15 @@ public class OAuth2RestOperationsConfiguration {
 	@Configuration
 	@ConditionalOnMissingBean(OAuth2ClientConfiguration.class)
 	@ConditionalOnWebApplication
-	protected static class RequestScopedConfiguration extends BaseConfiguration {
+	protected static class RequestScopedConfiguration {
+
+		@Bean
+		@ConfigurationProperties("security.oauth2.client")
+		@Primary
+		public AuthorizationCodeResourceDetails oauth2RemoteResource() {
+			AuthorizationCodeResourceDetails details = new AuthorizationCodeResourceDetails();
+			return details;
+		}
 
 		@Bean
 		@Scope(value = "request", proxyMode = ScopedProxyMode.INTERFACES)

@@ -46,7 +46,7 @@ import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Import(EntityScanRegistrar.class)
+@Import(JpaEntityScanRegistrar.class)
 public @interface EntityScan {
 
 	/**
@@ -73,7 +73,7 @@ public @interface EntityScan {
 	 * <p>
 	 * Consider creating a special no-op marker class or interface in each package that
 	 * serves no purpose other than being referenced by this attribute.
-	 * @return classes form the base packages to scan
+	 * @return classes from the base packages to scan
 	 */
 	Class<?>[] basePackageClasses() default {};
 

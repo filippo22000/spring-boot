@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,10 @@ import java.net.UnknownHostException;
 
 import javax.annotation.PreDestroy;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientOptions;
+
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -28,9 +31,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
-
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientOptions;
 
 /**
  * {@link EnableAutoConfiguration Auto-configuration} for Mongo.
@@ -45,16 +45,20 @@ import com.mongodb.MongoClientOptions;
 @ConditionalOnMissingBean(type = "org.springframework.data.mongodb.MongoDbFactory")
 public class MongoAutoConfiguration {
 
-	@Autowired
-	private MongoProperties properties;
+	private final MongoProperties properties;
 
-	@Autowired(required = false)
-	private MongoClientOptions options;
+	private final MongoClientOptions options;
 
-	@Autowired
-	private Environment environment;
+	private final Environment environment;
 
 	private MongoClient mongo;
+
+	public MongoAutoConfiguration(MongoProperties properties,
+			ObjectProvider<MongoClientOptions> optionsProvider, Environment environment) {
+		this.properties = properties;
+		this.options = optionsProvider.getIfAvailable();
+		this.environment = environment;
+	}
 
 	@PreDestroy
 	public void close() {

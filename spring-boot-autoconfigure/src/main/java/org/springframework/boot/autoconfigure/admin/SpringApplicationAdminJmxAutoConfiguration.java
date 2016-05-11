@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package org.springframework.boot.autoconfigure.admin;
 
 import javax.management.MalformedObjectNameException;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.admin.SpringApplicationAdminMXBean;
 import org.springframework.boot.admin.SpringApplicationAdminMXBeanRegistrar;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -53,17 +53,22 @@ public class SpringApplicationAdminJmxAutoConfiguration {
 	 */
 	private static final String DEFAULT_JMX_NAME = "org.springframework.boot:type=Admin,name=SpringApplication";
 
-	@Autowired(required = false)
-	private MBeanExporter mbeanExporter;
+	private final MBeanExporter mbeanExporter;
 
-	@Autowired
-	private Environment environment;
+	private final Environment environment;
+
+	public SpringApplicationAdminJmxAutoConfiguration(
+			ObjectProvider<MBeanExporter> mbeanExporterProvider,
+			Environment environment) {
+		this.mbeanExporter = mbeanExporterProvider.getIfAvailable();
+		this.environment = environment;
+	}
 
 	@Bean
 	public SpringApplicationAdminMXBeanRegistrar springApplicationAdminRegistrar()
 			throws MalformedObjectNameException {
-		String jmxName = this.environment
-				.getProperty(JMX_NAME_PROPERTY, DEFAULT_JMX_NAME);
+		String jmxName = this.environment.getProperty(JMX_NAME_PROPERTY,
+				DEFAULT_JMX_NAME);
 		if (this.mbeanExporter != null) { // Make sure to not register that MBean twice
 			this.mbeanExporter.addExcludedBean(jmxName);
 		}

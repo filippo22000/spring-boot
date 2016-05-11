@@ -22,10 +22,10 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.oauth2.client.OAuth2RestOperations;
 import org.springframework.security.oauth2.client.OAuth2RestTemplate;
 import org.springframework.security.oauth2.client.resource.BaseOAuth2ProtectedResourceDetails;
@@ -57,6 +57,8 @@ public class UserInfoTokenServices implements ResourceServerTokenServices {
 
 	private String tokenType = DefaultOAuth2AccessToken.BEARER_TYPE;
 
+	private AuthoritiesExtractor authoritiesExtractor = new FixedAuthoritiesExtractor();
+
 	public UserInfoTokenServices(String userInfoEndpointUrl, String clientId) {
 		this.userInfoEndpointUrl = userInfoEndpointUrl;
 		this.clientId = clientId;
@@ -68,6 +70,10 @@ public class UserInfoTokenServices implements ResourceServerTokenServices {
 
 	public void setRestTemplate(OAuth2RestOperations restTemplate) {
 		this.restTemplate = restTemplate;
+	}
+
+	public void setAuthoritiesExtractor(AuthoritiesExtractor authoritiesExtractor) {
+		this.authoritiesExtractor = authoritiesExtractor;
 	}
 
 	@Override
@@ -83,8 +89,8 @@ public class UserInfoTokenServices implements ResourceServerTokenServices {
 
 	private OAuth2Authentication extractAuthentication(Map<String, Object> map) {
 		Object principal = getPrincipal(map);
-		List<GrantedAuthority> authorities = AuthorityUtils
-				.commaSeparatedStringToAuthorityList("ROLE_USER");
+		List<GrantedAuthority> authorities = this.authoritiesExtractor
+				.extractAuthorities(map);
 		OAuth2Request request = new OAuth2Request(null, this.clientId, null, true, null,
 				null, null, null, null);
 		UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(
@@ -93,7 +99,13 @@ public class UserInfoTokenServices implements ResourceServerTokenServices {
 		return new OAuth2Authentication(request, token);
 	}
 
-	private Object getPrincipal(Map<String, Object> map) {
+	/**
+	 * Return the principal that should be used for the token. The default implementation
+	 * looks for well know {@code user*} keys in the map.
+	 * @param map the source map
+	 * @return the principal or {@literal "unknown"}
+	 */
+	protected Object getPrincipal(Map<String, Object> map) {
 		for (String key : PRINCIPAL_KEYS) {
 			if (map.containsKey(key)) {
 				return map.get(key);
@@ -117,9 +129,14 @@ public class UserInfoTokenServices implements ResourceServerTokenServices {
 				resource.setClientId(this.clientId);
 				restTemplate = new OAuth2RestTemplate(resource);
 			}
-			DefaultOAuth2AccessToken token = new DefaultOAuth2AccessToken(accessToken);
-			token.setTokenType(this.tokenType);
-			restTemplate.getOAuth2ClientContext().setAccessToken(token);
+			OAuth2AccessToken existingToken = restTemplate.getOAuth2ClientContext()
+					.getAccessToken();
+			if (existingToken == null || !accessToken.equals(existingToken.getValue())) {
+				DefaultOAuth2AccessToken token = new DefaultOAuth2AccessToken(
+						accessToken);
+				token.setTokenType(this.tokenType);
+				restTemplate.getOAuth2ClientContext().setAccessToken(token);
+			}
 			return restTemplate.getForEntity(path, Map.class).getBody();
 		}
 		catch (Exception ex) {
@@ -129,4 +146,5 @@ public class UserInfoTokenServices implements ResourceServerTokenServices {
 					"Could not fetch user details");
 		}
 	}
+
 }

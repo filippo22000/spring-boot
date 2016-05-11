@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import javax.sql.DataSource;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -40,12 +41,13 @@ import org.springframework.util.StringUtils;
  *
  * @author Dave Syer
  * @author Phillip Webb
+ * @author Eddú Meléndez
  * @since 1.1.0
  * @see DataSourceAutoConfiguration
  */
 class DataSourceInitializer implements ApplicationListener<DataSourceInitializedEvent> {
 
-	private static Log logger = LogFactory.getLog(DataSourceInitializer.class);
+	private static final Log logger = LogFactory.getLog(DataSourceInitializer.class);
 
 	@Autowired
 	private ConfigurableApplicationContext applicationContext;
@@ -63,7 +65,8 @@ class DataSourceInitializer implements ApplicationListener<DataSourceInitialized
 			logger.debug("Initialization disabled (not running DDL scripts)");
 			return;
 		}
-		if (this.applicationContext.getBeanNamesForType(DataSource.class, false, false).length > 0) {
+		if (this.applicationContext.getBeanNamesForType(DataSource.class, false,
+				false).length > 0) {
 			this.dataSource = this.applicationContext.getBean(DataSource.class);
 		}
 		if (this.dataSource == null) {
@@ -76,10 +79,12 @@ class DataSourceInitializer implements ApplicationListener<DataSourceInitialized
 	private void runSchemaScripts() {
 		List<Resource> scripts = getScripts(this.properties.getSchema(), "schema");
 		if (!scripts.isEmpty()) {
-			runScripts(scripts);
+			String username = this.properties.getSchemaUsername();
+			String password = this.properties.getSchemaPassword();
+			runScripts(scripts, username, password);
 			try {
-				this.applicationContext.publishEvent(new DataSourceInitializedEvent(
-						this.dataSource));
+				this.applicationContext
+						.publishEvent(new DataSourceInitializedEvent(this.dataSource));
 				// The listener might not be registered yet, so don't rely on it.
 				if (!this.initialized) {
 					runDataScripts();
@@ -109,7 +114,9 @@ class DataSourceInitializer implements ApplicationListener<DataSourceInitialized
 
 	private void runDataScripts() {
 		List<Resource> scripts = getScripts(this.properties.getData(), "data");
-		runScripts(scripts);
+		String username = this.properties.getDataUsername();
+		String password = this.properties.getDataPassword();
+		runScripts(scripts, username, password);
 	}
 
 	private List<Resource> getScripts(String locations, String fallback) {
@@ -132,14 +139,14 @@ class DataSourceInitializer implements ApplicationListener<DataSourceInitialized
 				}
 			}
 			catch (IOException ex) {
-				throw new IllegalStateException("Unable to load resource from "
-						+ location, ex);
+				throw new IllegalStateException(
+						"Unable to load resource from " + location, ex);
 			}
 		}
 		return resources;
 	}
 
-	private void runScripts(List<Resource> resources) {
+	private void runScripts(List<Resource> resources, String username, String password) {
 		if (resources.isEmpty()) {
 			return;
 		}
@@ -152,7 +159,14 @@ class DataSourceInitializer implements ApplicationListener<DataSourceInitialized
 		for (Resource resource : resources) {
 			populator.addScript(resource);
 		}
-		DatabasePopulatorUtils.execute(populator, this.dataSource);
+		DataSource dataSource = this.dataSource;
+		if (StringUtils.hasText(username) && StringUtils.hasText(password)) {
+			dataSource = DataSourceBuilder.create(this.properties.getClassLoader())
+					.driverClassName(this.properties.determineDriverClassName())
+					.url(this.properties.determineUrl()).username(username)
+					.password(password).build();
+		}
+		DatabasePopulatorUtils.execute(populator, dataSource);
 	}
 
 }

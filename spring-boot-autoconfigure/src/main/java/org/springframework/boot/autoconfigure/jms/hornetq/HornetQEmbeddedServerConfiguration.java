@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2014 the original author or authors.
+ * Copyright 2012-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,8 @@ import org.hornetq.jms.server.config.impl.JMSConfigurationImpl;
 import org.hornetq.jms.server.config.impl.JMSQueueConfigurationImpl;
 import org.hornetq.jms.server.config.impl.TopicConfigurationImpl;
 import org.hornetq.jms.server.embedded.EmbeddedJMS;
-import org.springframework.beans.factory.annotation.Autowired;
+
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -46,17 +47,23 @@ import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 @ConditionalOnProperty(prefix = "spring.hornetq.embedded", name = "enabled", havingValue = "true", matchIfMissing = true)
 class HornetQEmbeddedServerConfiguration {
 
-	@Autowired
-	private HornetQProperties properties;
+	private final HornetQProperties properties;
 
-	@Autowired(required = false)
-	private List<HornetQConfigurationCustomizer> configurationCustomizers;
+	private final List<HornetQConfigurationCustomizer> configurationCustomizers;
 
-	@Autowired(required = false)
-	private List<JMSQueueConfiguration> queuesConfiguration;
+	private final List<JMSQueueConfiguration> queuesConfiguration;
 
-	@Autowired(required = false)
-	private List<TopicConfiguration> topicsConfiguration;
+	private final List<TopicConfiguration> topicsConfiguration;
+
+	HornetQEmbeddedServerConfiguration(HornetQProperties properties,
+			ObjectProvider<List<HornetQConfigurationCustomizer>> configurationCustomizersProvider,
+			ObjectProvider<List<JMSQueueConfiguration>> queuesConfigurationProvider,
+			ObjectProvider<List<TopicConfiguration>> topicsConfigurationProvider) {
+		this.properties = properties;
+		this.configurationCustomizers = configurationCustomizersProvider.getIfAvailable();
+		this.queuesConfiguration = queuesConfigurationProvider.getIfAvailable();
+		this.topicsConfiguration = topicsConfigurationProvider.getIfAvailable();
+	}
 
 	@Bean
 	@ConditionalOnMissingBean
@@ -106,16 +113,15 @@ class HornetQEmbeddedServerConfiguration {
 	private void addQueues(JMSConfiguration configuration, String[] queues) {
 		boolean persistent = this.properties.getEmbedded().isPersistent();
 		for (String queue : queues) {
-			configuration.getQueueConfigurations().add(
-					new JMSQueueConfigurationImpl(queue, null, persistent, "/queue/"
-							+ queue));
+			configuration.getQueueConfigurations().add(new JMSQueueConfigurationImpl(
+					queue, null, persistent, "/queue/" + queue));
 		}
 	}
 
 	private void addTopics(JMSConfiguration configuration, String[] topics) {
 		for (String topic : topics) {
-			configuration.getTopicConfigurations().add(
-					new TopicConfigurationImpl(topic, "/topic/" + topic));
+			configuration.getTopicConfigurations()
+					.add(new TopicConfigurationImpl(topic, "/topic/" + topic));
 		}
 	}
 

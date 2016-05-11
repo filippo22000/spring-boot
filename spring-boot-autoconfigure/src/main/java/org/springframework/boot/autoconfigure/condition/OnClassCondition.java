@@ -44,7 +44,7 @@ class OnClassCondition extends SpringBootCondition {
 	public ConditionOutcome getMatchOutcome(ConditionContext context,
 			AnnotatedTypeMetadata metadata) {
 
-		StringBuffer matchMessage = new StringBuffer();
+		StringBuilder matchMessage = new StringBuilder();
 
 		MultiValueMap<String, Object> onClasses = getAttributes(metadata,
 				ConditionalOnClass.class);
@@ -56,25 +56,26 @@ class OnClassCondition extends SpringBootCondition {
 						.noMatch("required @ConditionalOnClass classes not found: "
 								+ StringUtils.collectionToCommaDelimitedString(missing));
 			}
-			matchMessage.append("@ConditionalOnClass classes found: "
-					+ StringUtils.collectionToCommaDelimitedString(getMatchingClasses(
-							onClasses, MatchType.PRESENT, context)));
+			matchMessage.append("@ConditionalOnClass classes found: ")
+					.append(StringUtils.collectionToCommaDelimitedString(
+							getMatchingClasses(onClasses, MatchType.PRESENT, context)));
 		}
 
 		MultiValueMap<String, Object> onMissingClasses = getAttributes(metadata,
 				ConditionalOnMissingClass.class);
 		if (onMissingClasses != null) {
-			List<String> present = getMatchingClasses(onMissingClasses,
-					MatchType.PRESENT, context);
+			List<String> present = getMatchingClasses(onMissingClasses, MatchType.PRESENT,
+					context);
 			if (!present.isEmpty()) {
 				return ConditionOutcome
 						.noMatch("required @ConditionalOnMissing classes found: "
 								+ StringUtils.collectionToCommaDelimitedString(present));
 			}
 			matchMessage.append(matchMessage.length() == 0 ? "" : " ");
-			matchMessage.append("@ConditionalOnMissing classes not found: "
-					+ StringUtils.collectionToCommaDelimitedString(getMatchingClasses(
-							onMissingClasses, MatchType.MISSING, context)));
+			matchMessage.append("@ConditionalOnMissing classes not found: ")
+					.append(StringUtils.collectionToCommaDelimitedString(
+							getMatchingClasses(onMissingClasses, MatchType.MISSING,
+									context)));
 		}
 
 		return ConditionOutcome.match(matchMessage.toString());

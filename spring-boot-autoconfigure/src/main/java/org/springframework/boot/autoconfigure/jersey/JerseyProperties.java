@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * {@link ConfigurationProperties} for Jersey.
  *
  * @author Dave Syer
+ * @author Eddú Meléndez
+ * @author Stephane Nicoll
  * @since 1.2.0
  */
 @ConfigurationProperties("spring.jersey")
@@ -40,14 +42,22 @@ public class JerseyProperties {
 	 */
 	private Map<String, String> init = new HashMap<String, String>();
 
-	private Filter filter = new Filter();
+	private final Filter filter = new Filter();
+
+	private final Servlet servlet = new Servlet();
+
+	/**
+	 * Path that serves as the base URI for the application. Overrides the value of
+	 * "@ApplicationPath" if specified.
+	 */
+	private String applicationPath;
 
 	public Filter getFilter() {
 		return this.filter;
 	}
 
-	public void setFilter(Filter filter) {
-		this.filter = filter;
+	public Servlet getServlet() {
+		return this.servlet;
 	}
 
 	public Type getType() {
@@ -64,6 +74,14 @@ public class JerseyProperties {
 
 	public void setInit(Map<String, String> init) {
 		this.init = init;
+	}
+
+	public String getApplicationPath() {
+		return this.applicationPath;
+	}
+
+	public void setApplicationPath(String applicationPath) {
+		this.applicationPath = applicationPath;
 	}
 
 	public enum Type {
@@ -83,6 +101,23 @@ public class JerseyProperties {
 
 		public void setOrder(int order) {
 			this.order = order;
+		}
+
+	}
+
+	public static class Servlet {
+
+		/**
+		 * Load on startup priority of the Jersey servlet.
+		 */
+		private int loadOnStartup = -1;
+
+		public int getLoadOnStartup() {
+			return this.loadOnStartup;
+		}
+
+		public void setLoadOnStartup(int loadOnStartup) {
+			this.loadOnStartup = loadOnStartup;
 		}
 
 	}
